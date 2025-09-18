@@ -1,0 +1,77 @@
+conditions for the below chart:
+
+Bug condtion:
+
+1:in the edit user and in the Roles , you can not change your own permissions (done)
+2:in everywhere permissions with the slug admin cannot be assigned by the one who's not an admin (done)
+3:i need a Route middleware , that checks if there is a role with the slug Administrator or Admin , Assign All the permissions to him(done)
+4:no one can update the role of an administrator or admin , administrator can update the role of an admin  (done)
+5:no one can delete the user who has a role which has the slug administrator or admin,but administrator can delete the role of admin or anyone else except himself (done) 
+
+
+6:in the edit users, if there are two permissions test1 and test 2, if the user is assigned to a role that has test1 , then the user can only assign test1 should not be able to escalate permissions using the inspect element.(vulnerability still exist )
+
+
+
+
+
+
+
+
+
+Admin:
+1:if the slug of the Role is Administrator, then assgin all the permissions to him(done)
+2:if any permission having the slug Admin or Administrator, no one can use that permissions(done) , 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Permissions:
+
+
+This is Permissions List:
+#	Permissions		Slug	
+1	manage_roles		manage-roles	  
+2	view_content		view-content	  
+3	create_content		create-content	  
+4	manage_users		manage-users	  
+5	manage_permissions	manage-permissions	  
+6	delete_content		delete-content	  
+7	edit_content		edit-content
+
+
+
+This is Role List:
+#	Role	   Slug           Permissions	
+1	Viewer	   viewer		  
+2	SuperAdmin super-admin		  
+3	Admin	   admin		  
+4	Guest	   guest		  
+5	Editor	   editor	
+
+
+| Role       | Permissions                                         |
+|------------|-----------------------------------------------------|
+| Viewer     | view_content                                        |
+| SuperAdmin | manage_roles, view_content, create_content,          |
+|            | manage_users, manage_permissions, delete_content,   |
+|            | edit_content                                        |
+| Admin      | manage_roles, view_content, create_content,          |
+|            | manage_users, delete_content, edit_content           |
+| Guest      | No permissions                                      |
+| Editor     | create_content, edit_content, delete_content,        |
+|            | view_content                                        |
+

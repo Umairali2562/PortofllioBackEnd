@@ -1,0 +1,28 @@
+2024-04-17T09:33:44.723Z - Puppeteer script started.
+2024-04-17T09:33:44.724Z - URL: http://localhost:3000/test
+2024-04-17T09:33:44.724Z - Output Path: C:/xampp/htdocs/My-Web-Designs-for-Portfollio/Laravel/Api/storage/app/public/screenshots
+2024-04-17T09:33:47.811Z - Navigating to URL...
+2024-04-17T09:33:47.813Z - Error capturing screenshot: TypeError: page.waitForTimeout is not a function
+2024-04-17T09:33:47.974Z - Closing browser.
+2024-04-17T09:33:47.974Z - Puppeteer script completed.
+2024-04-17T09:34:24.699Z - Puppeteer script started.
+2024-04-17T09:34:24.700Z - URL: http://localhost:3000/test
+2024-04-17T09:34:24.700Z - Output Path: C:/xampp/htdocs/My-Web-Designs-for-Portfollio/Laravel/Api/storage/app/public/screenshots/ok.png
+2024-04-17T09:34:27.065Z - Navigating to URL...
+2024-04-17T09:34:27.066Z - Error capturing screenshot: TypeError: page.waitForTimeout is not a function
+2024-04-17T09:34:27.214Z - Closing browser.
+2024-04-17T09:34:27.214Z - Puppeteer script completed.
+2024-04-17T09:35:20.429Z - Puppeteer script started.
+2024-04-17T09:35:20.431Z - URL: http://localhost:3000/hello
+2024-04-17T09:35:20.431Z - Output Path: C:/xampp/htdocs/My-Web-Designs-for-Portfollio/Laravel/Api/storage/app/public/screenshots/ok.png
+2024-04-17T09:35:23.355Z - Navigating to URL...
+2024-04-17T09:35:23.357Z - Error capturing screenshot: TypeError: page.waitForTimeout is not a function
+2024-04-17T09:35:23.507Z - Closing browser.
+2024-04-17T09:35:23.507Z - Puppeteer script completed.
+2024-04-17T09:35:35.336Z - Puppeteer script started.
+2024-04-17T09:35:35.339Z - URL: http://localhost:3000/hello
+2024-04-17T09:35:35.339Z - Output Path: C:/xampp/htdocs/My-Web-Designs-for-Portfollio/Laravel/Api/storage/app/public/screenshots/ok.png
+2024-04-17T09:35:38.453Z - Navigating to URL...
+2024-04-17T09:35:38.456Z - Error capturing screenshot: TypeError: page.waitForTimeout is not a function
+2024-04-17T09:35:38.628Z - Closing browser.
+2024-04-17T09:35:38.628Z - Puppeteer script completed.
