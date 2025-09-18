@@ -2,55 +2,57 @@
 
 namespace Database\Seeders;
 
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use App\Models\Header;
 use App\Models\Permission;
+use App\Models\Role;
 use App\Models\User;
-use Faker\Factory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     *
-     * @return void
-     */
     public function run()
     {
-        // \App\Models\User::factory(10)->create();
+        // Create Testimonials and Navbar entries
+        \App\Models\Testimonials::factory(10)->create();
+        \App\Models\Navbar::factory(5)->create();
+        Header::factory()->count(1)->create();
 
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        // Create Permissions
+        $permissions = Permission::factory()->count(30)->create();
 
-       \App\Models\Testimonials::factory(10)->create();
-       \App\Models\Navbar::factory(5)->create();
+        // Create Roles
+        $roles = Role::factory()->count(5)->create();
 
-       \App\Models\Permission::factory()->count(30)->create();
-        Header::factory()->count(1)->create(); // Change count as needed
-       \App\Models\Role::factory()->count(5)->create();
-     //  \App\Models\User::factory()->count(2)->create();
-        $umair=User::create([
-            'name' => 'Umair',
-            'email' => 'umairali2562@gmail.com',
-            'password' => bcrypt('123'),
-            'remember_token' => Str::random(10),
-        ]);
+        // Create Users
+        $umair = User::firstOrCreate(
+            ['email' => 'umairali2562@gmail.com'],
+            [
+                'name' => 'Umair',
+                'password' => bcrypt('123'),
+                'remember_token' => Str::random(10),
+            ]
+        );
+
+        User::firstOrCreate(
+            ['email' => 'Waqar@gmail.com'],
+            [
+                'name' => 'Waqar',
+                'password' => bcrypt('123'),
+                'remember_token' => Str::random(10),
+            ]
+        );
 
         // Assign all permissions to Umair
-        $permissions = Permission::all();
         $umair->permissions()->sync($permissions->pluck('id')->toArray());
 
-        User::create([
-            'name' => 'Waqar',
-            'email' => 'Waqar@gmail.com',
-            'password' => bcrypt('123'),
-            'remember_token' => Str::random(10),
-        ]);
+        // Assign all permissions to Administrator role
+        $adminRole = Role::where('slug', 'administrator')->first();
+        if ($adminRole) {
+            $adminRole->permissions()->sync($permissions->pluck('id')->toArray());
 
-
+            // Assign Umair the Administrator role
+            $umair->roles()->sync([$adminRole->id]);
+        }
     }
 }

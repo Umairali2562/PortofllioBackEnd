@@ -17,7 +17,7 @@ class RoleFactory extends Factory
      */
     public function definition()
     {
-        // Define specific roles
+        // List of roles
         $roles = [
             'Administrator' => 'administrator',
             'Manager' => 'manager',
@@ -26,11 +26,16 @@ class RoleFactory extends Factory
             'Guest' => 'guest',
         ];
 
+        // Instead of random, pick the first unused role each time
+        static $index = 0;
+        $names = array_keys($roles);
+        $name = $names[$index % count($names)];
+        $slug = $roles[$name];
+        $index++;
+
         return [
-            'name' => $this->faker->unique()->randomElement(array_keys($roles)),
-            'slug' => function (array $attributes) use ($roles) {
-                return $roles[$attributes['name']];
-            },
+            'name' => $name,
+            'slug' => $slug,
         ];
     }
 }
