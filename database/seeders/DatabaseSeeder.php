@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use App\Models\Header;
+use App\Models\Permission;
 use App\Models\User;
 use Faker\Factory;
 use Illuminate\Database\Seeder;
@@ -32,16 +33,20 @@ class DatabaseSeeder extends Seeder
         Header::factory()->count(1)->create(); // Change count as needed
        \App\Models\Role::factory()->count(5)->create();
      //  \App\Models\User::factory()->count(2)->create();
-        User::create([
+        $umair=User::create([
             'name' => 'Umair',
             'email' => 'umairali2562@gmail.com',
             'password' => bcrypt('123'),
             'remember_token' => Str::random(10),
         ]);
 
+        // Assign all permissions to Umair
+        $permissions = Permission::all();
+        $umair->permissions()->sync($permissions->pluck('id')->toArray());
+
         User::create([
-            'name' => 'Hassan',
-            'email' => 'Hassan@gmail.com',
+            'name' => 'Waqar',
+            'email' => 'Waqar@gmail.com',
             'password' => bcrypt('123'),
             'remember_token' => Str::random(10),
         ]);
