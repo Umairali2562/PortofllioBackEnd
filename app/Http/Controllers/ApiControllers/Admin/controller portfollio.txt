@@ -1,0 +1,606 @@
+<?php
+
+
+
+namespace App\Http\Controllers\ApiControllers\Admin;
+
+
+
+use App\Http\Controllers\Controller;
+
+use App\Models\Project;
+
+use Illuminate\Http\Request;
+
+use Illuminate\Support\Facades\Auth;
+
+use Illuminate\Support\Facades\Storage;
+
+use ZipArchive;
+
+use Symfony\Component\Process\Process;
+
+use Symfony\Component\Process\Exception\ProcessFailedException;
+
+
+
+class PortFollioController extends Controller
+
+{
+
+    public function uploadFiles(Request $request)
+
+    {
+
+        \Log::info('Upload request received', ['user_id' => Auth::id() ?? null]);
+
+
+
+        $this->authorize('Create_Projects', Project::class);
+
+        $category = $request->input('category');
+
+
+
+        if (!Auth::check()) {
+
+            \Log::warning('User not authenticated');
+
+            return response()->json(['error' => 'Sorry you are not authenticated.'], 401);
+
+        }
+
+
+
+        $file = $request->file('file');
+
+        $folderPath = $request->input('folder_path', '');
+
+        $fileName = $file->getClientOriginalName();
+
+
+
+        \Log::info('File info', ['name' => $fileName, 'folder_path' => $folderPath]);
+
+
+
+        // Store uploaded file
+
+        $filePath = Storage::putFile('public/' . rtrim($folderPath, '/'), $file);
+
+        $fileUrl = Storage::url($filePath);
+
+
+
+        \Log::info('Stored file', ['file_path' => $filePath, 'url' => $fileUrl]);
+
+
+
+        // If zip, extract and take screenshot
+
+        if ($file->getClientOriginalExtension() === 'zip') {
+
+            $extractedPath = $this->extractZipFile($filePath, $folderPath);
+
+
+
+            if (!$extractedPath) {
+
+                \Log::error('Failed to extract zip file', ['zip_path' => $filePath]);
+
+                return response()->json(['error' => 'Failed to extract the zip file.'], 500);
+
+            }
+
+
+
+            $screenshotPath = $this->takeScreenshot($extractedPath, $category);
+
+            if (!$screenshotPath) {
+
+                \Log::error('Failed to take screenshot', ['extracted_path' => $extractedPath]);
+
+                return response()->json(['error' => 'Failed to take screenshot of the React project.'], 500);
+
+            }
+
+
+
+            return response()->json([
+
+                'message' => 'Zip file extracted successfully.',
+
+                'filename' => $fileName,
+
+                'file_url' => $fileUrl,
+
+                'screenshot_path' => $screenshotPath
+
+            ]);
+
+        }
+
+
+
+        return response()->json([
+
+            'message' => 'File Uploaded Successfully',
+
+            'filename' => $fileName,
+
+            'file_url' => $fileUrl
+
+        ]);
+
+    }
+
+
+
+    private function extractZipFile($filePath, $folderPath)
+
+    {
+
+        \Log::info('Extracting zip file', ['file_path' => $filePath]);
+
+
+
+        $zip = new ZipArchive;
+
+        $zipFilePath = storage_path('app/' . $filePath);
+
+        $extractPath = storage_path('app/public/' . rtrim($folderPath, '/'));
+
+
+
+        if (!file_exists($zipFilePath)) {
+
+            \Log::error('Zip file does not exist', ['zipFilePath' => $zipFilePath]);
+
+            return false;
+
+        }
+
+
+
+        if ($zip->open($zipFilePath) !== TRUE) {
+
+            \Log::error('Failed to open zip', ['zipFilePath' => $zipFilePath]);
+
+            return false;
+
+        }
+
+
+
+        $tempExtractPath = tempnam(sys_get_temp_dir(), 'extract_');
+
+        unlink($tempExtractPath);
+
+        mkdir($tempExtractPath);
+
+
+
+        $zip->extractTo($tempExtractPath);
+
+        $zip->close();
+
+
+
+        \Log::info('Zip extracted to temp path', ['tempExtractPath' => $tempExtractPath]);
+
+
+
+        $reactProjectDir = $this->findReactProjectDirectory($tempExtractPath);
+
+        if (!$reactProjectDir) {
+
+            \Log::error('React project not found in extracted folder', ['tempExtractPath' => $tempExtractPath]);
+
+            $this->removeDirectory($tempExtractPath);
+
+            return false;
+
+        }
+
+
+
+        $destinationPath = $extractPath . '/' . basename($reactProjectDir);
+
+        if (!is_dir($destinationPath)) {
+
+            if (!rename($reactProjectDir, $destinationPath)) {
+
+                \Log::error('Failed to move extracted React project', ['destinationPath' => $destinationPath]);
+
+                $this->removeDirectory($tempExtractPath);
+
+                return false;
+
+            }
+
+        }
+
+
+
+        $this->removeDirectory($tempExtractPath);
+
+        \Log::info('React project extracted successfully', ['destinationPath' => $destinationPath]);
+
+        return $destinationPath;
+
+    }
+
+
+
+    private function findReactProjectDirectory($dir)
+
+    {
+
+        foreach (scandir($dir) as $file) {
+
+            if ($file === '.' || $file === '..') continue;
+
+            $filePath = $dir . '/' . $file;
+
+            if (is_dir($filePath) && $this->isReactProject($filePath)) {
+
+                \Log::info('React project directory found', ['path' => $filePath]);
+
+                return $filePath;
+
+            }
+
+            if (is_dir($filePath)) {
+
+                $subDirResult = $this->findReactProjectDirectory($filePath);
+
+                if ($subDirResult !== false) return $subDirResult;
+
+            }
+
+        }
+
+        return false;
+
+    }
+
+
+
+    private function removeDirectory($dir)
+
+    {
+
+        $files = array_diff(scandir($dir), ['.', '..']);
+
+        foreach ($files as $file) {
+
+            $path = "$dir/$file";
+
+            is_dir($path) ? $this->removeDirectory($path) : unlink($path);
+
+        }
+
+        return rmdir($dir);
+
+    }
+
+
+
+    private function takeScreenshot($extractedPath, $category)
+
+    {
+
+        if (!Auth::check()) return false;
+
+
+
+        $dir = basename($extractedPath);
+
+
+
+        // New screenshot directory: /var/www/screenshots
+
+        $screenshotDir = '/var/www/screenshots';
+
+        if (!file_exists($screenshotDir)) {
+
+            mkdir($screenshotDir, 0777, true);
+
+            \Log::info('Created screenshotDir', ['dir' => $screenshotDir]);
+
+        }
+
+
+
+        $screenshotName = 'screenshot' . rand() . '.png';
+
+        $screenshotPath = $screenshotDir . '/' . $screenshotName;
+
+
+
+        // Choose the URL Puppeteer should visit. Use the same host/port as incoming request if available,
+
+        // otherwise fall back to public IP (45.117.169.109) or 127.0.0.1.
+
+        $host = request()->getHost() ?: '45.117.169.109';
+
+        $port = request()->getPort() ?: 8000;
+
+        $scheme = request()->getScheme() ?: 'http';
+
+        $projectUrl = "{$scheme}://{$host}:{$port}/storage/{$dir}/index.html";
+
+
+
+        \Log::info('Taking screenshot', ['url' => $projectUrl, 'output_path' => $screenshotPath]);
+
+
+
+        $scriptPath = base_path('captureScreenshot.js');
+
+
+
+        // Build Process (no shell escaping required)
+
+        $cwd = base_path();
+
+        $env = [
+
+            'HOME' => '/var/www',                 // helps some chrome/snap setups
+
+            'XDG_RUNTIME_DIR' => '/tmp',          // helps chromium sandbox in headless contexts
+
+            'PATH' => getenv('PATH'),             // keep PATH so node/chrome can be found
+
+        ];
+
+
+
+        // Command arguments array — Process will handle proper escaping
+
+        $process = new Process(
+
+            ['/usr/bin/node', $scriptPath, $projectUrl, $screenshotPath],
+
+            $cwd,
+
+            $env,
+
+            null,
+
+            240 // seconds timeout
+
+        );
+
+
+
+        // Extra debug info
+
+        \Log::info('About to run Process', [
+
+            'command' => $process->getCommandLine(),
+
+            'cwd' => $cwd,
+
+            'env' => array_keys($env),
+
+            'whoami' => trim(shell_exec('whoami')),
+
+        ]);
+
+
+
+        // Run
+
+        $process->run();
+
+
+
+        // Capture outputs
+
+        $stdout = $process->getOutput();
+
+        $stderr = $process->getErrorOutput();
+
+        $exitCode = $process->getExitCode();
+
+
+
+        \Log::info('Puppeteer process finished', [
+
+            'command' => $process->getCommandLine(),
+
+            'exitCode' => $exitCode,
+
+            'stdout' => $stdout,
+
+            'stderr' => $stderr,
+
+            'screenshot_exists' => file_exists($screenshotPath) ? 'yes' : 'no',
+
+            'screenshotPath' => $screenshotPath,
+
+        ]);
+
+
+
+        if (!$process->isSuccessful() || !file_exists($screenshotPath)) {
+
+            \Log::error('Puppeteer screenshot failed (Process)', [
+
+                'command' => $process->getCommandLine(),
+
+                'exitCode' => $exitCode,
+
+                'stdout' => $stdout,
+
+                'stderr' => $stderr,
+
+                'screenshot_exists' => file_exists($screenshotPath)
+
+            ]);
+
+            return false;
+
+        }
+
+
+
+        // Ensure file perms are readable/writable by group
+
+        @chmod($screenshotPath, 0664);
+
+
+
+        \Log::info('Screenshot taken successfully', ['path' => $screenshotPath]);
+
+
+
+        // Resize screenshot (same as before)
+
+        $sourceImage = imagecreatefrompng($screenshotPath);
+
+        $sourceWidth = imagesx($sourceImage);
+
+        $sourceHeight = imagesy($sourceImage);
+
+
+
+        $newWidth = 519;
+
+        $newHeight = 380;
+
+        $scale = $newHeight / $sourceHeight;
+
+        $resizedWidth = min($sourceWidth * $scale, $newWidth);
+
+        $positionX = ($newWidth - $resizedWidth) / 2;
+
+
+
+        $destinationImage = imagecreatetruecolor($newWidth, $newHeight);
+
+        imagesavealpha($destinationImage, true);
+
+        $transparentColor = imagecolorallocatealpha($destinationImage, 0, 0, 0, 127);
+
+        imagefill($destinationImage, 0, 0, $transparentColor);
+
+
+
+        imagecopyresampled(
+
+            $destinationImage,
+
+            $sourceImage,
+
+            $positionX,
+
+            0,
+
+            0,
+
+            0,
+
+            $resizedWidth,
+
+            $newHeight,
+
+            $sourceWidth,
+
+            $sourceHeight
+
+        );
+
+
+
+        imagepng($destinationImage, $screenshotPath, 9);
+
+        imagedestroy($sourceImage);
+
+        imagedestroy($destinationImage);
+
+
+
+        // Save project info in DB
+
+        $user = Auth::user();
+
+        $project = new Project();
+
+        $project->Project_name = $dir;
+
+        $project->Project_category = $category;
+
+        $project->Project_screenshot = '/screenshots/' . $screenshotName; // served via symlink or nginx
+
+        $project->Project_user = $user->name ?: 'Username';
+
+        $project->Project_link = '/storage/' . $dir;
+
+        $project->save();
+
+
+
+        return $screenshotPath;
+
+    }
+
+
+
+    private function isReactProject($dir)
+
+    {
+
+        return true; // For now, treat any folder as React
+
+    }
+
+
+
+    public function index()
+
+    {
+
+        return Project::all();
+
+    }
+
+
+
+    public function main()
+
+    {
+
+        $this->authorize('View_Projects', Project::class);
+
+        return Project::all();
+
+    }
+
+
+
+    public function deleteit($id)
+
+    {
+
+        $this->authorize('Delete_Projects', Project::class);
+
+        try {
+
+            $project = Project::findOrFail($id);
+
+            $project->delete();
+
+            return response()->json(['Success' => 'Successfully deleted.'], 200);
+
+        } catch (\Exception $e) {
+
+            return response()->json(['error' => 'Failed to delete project'], 500);
+
+        }
+
+    }
+
+}
+

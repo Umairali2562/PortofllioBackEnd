@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('headers', function (Blueprint $table) {
             $table->id();
             $table->string('Headings');
-            $table->string('Description');
+            $table->text('Description');
             $table->string('MainImage')->nullable(); // Make nullable
             $table->string('cv')->nullable(); // Make nullable
             $table->timestamps();

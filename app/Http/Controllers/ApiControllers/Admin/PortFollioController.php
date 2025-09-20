@@ -171,7 +171,7 @@ class PortFollioController extends Controller
 
             // Call Puppeteer script to capture the screenshot
             $scriptPath = base_path('captureScreenshot.js');
-            $command = "node {$scriptPath} http://localhost:3000/downloads/$dir {$screenshotPath}";
+            $command = "node {$scriptPath} http://localhost:8000/downloads/$dir {$screenshotPath}";
             $user = Auth::user();
 
             exec($command);
